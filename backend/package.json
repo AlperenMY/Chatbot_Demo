@@ -1,0 +1,20 @@
+{
+	"name": "chatbot_demo",
+	"version": "1.0.0",
+	"main": "app.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Alperen Yılmaz",
+	"license": "ISC",
+	"description": "",
+	"dependencies": {
+		"connect-mongo": "^5.1.0",
+		"dotenv": "^16.4.5",
+		"express": "^4.21.0",
+		"express-mongo-sanitize": "^2.2.0",
+		"express-session": "^1.18.0",
+		"helmet": "^8.0.0",
+		"mongoose": "^8.7.0"
+	}
+}

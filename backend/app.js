@@ -1,0 +1,82 @@
+const express = require("express");
+const mongoose = require("mongoose");
+const session = require("express-session");
+const mongoSanitize = require("express-mongo-sanitize");
+const helmet = require("helmet");
+const MongoStore = require("connect-mongo");
+require("dotenv").config();
+
+const AnswerList = require("./schema/answerList");
+
+const app = express();
+const dbUrl = process.env.DBURL;
+const port = process.env.PORT;
+const sessionConfig = {
+	name: "chtbtuid",
+	store: MongoStore.create({
+		mongoUrl: dbUrl,
+		touchAfter: 24 * 60 * 60,
+		crypto: {
+			secret: process.env.MONGO_STORE_SECRET,
+		},
+	}),
+	secret: process.env.SESSION_SECRET,
+	resave: false,
+	saveUninitialized: true,
+	cookie: {
+		maxAge: 1000 * 60 * 60 * 24 * 7,
+		httpOnly: true,
+	},
+};
+
+mongoose
+	.connect(dbUrl)
+	.then(() => {
+		console.log("MongoDB connected successfully!");
+	})
+	.catch((err) => {
+		console.log("MongoDB Eror: ", err);
+	});
+
+app.use(express.json());
+app.use(session(sessionConfig));
+app.use(mongoSanitize({ allowDots: true }));
+
+app.get("/whichQuestion", (req, res) => {
+	if (!req.session.questionIndex) {
+		req.session.questionIndex = 0;
+	}
+	console.log("Question Index:", req.session);
+	return res
+		.status(200)
+		.send({ success: true, message: req.session.questionIndex });
+});
+
+app.post("/register", (req, res) => {
+	const name = req.body.name;
+	req.session.name = name;
+	return res.status(200).send({ success: true, message: "ok" });
+});
+
+app.post("/answer", async (req, res) => {
+	try {
+		await AnswerList.findOneAndUpdate(
+			{ sessionId: req.session.id },
+			{
+				$push: {
+					answerList: { question: req.body.question, answer: req.body.answer },
+				},
+			},
+			{ upsert: true }
+		);
+		req.session.questionIndex += 1;
+		return res.status(200).send({ success: true, message: "ok" });
+	} catch (error) {
+		console.log(error);
+		return res.status(500).send({ success: true, message: error.message });
+	}
+});
+
+app.listen(port, () => {
+	console.log(`LISTENING ON PORT ${port}`);
+});
