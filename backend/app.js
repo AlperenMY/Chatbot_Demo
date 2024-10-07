@@ -1,10 +1,11 @@
+require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const session = require("express-session");
 const mongoSanitize = require("express-mongo-sanitize");
 const helmet = require("helmet");
 const MongoStore = require("connect-mongo");
-require("dotenv").config();
+const cors = require("cors");
 
 const AnswerList = require("./schema/answerList");
 
@@ -41,6 +42,20 @@ mongoose
 app.use(express.json());
 app.use(session(sessionConfig));
 app.use(mongoSanitize({ allowDots: true }));
+app.use(
+	cors({
+		origin: process.env.FRONTEND_URL,
+		methods: ["GET", "POST"],
+		allowedHeaders: [
+			"Authorization",
+			"content-type",
+			"Access-Control-Allow-Credentials",
+			"x-access-token",
+			"x-platform",
+		],
+		credentials: true,
+	})
+);
 
 app.get("/whichQuestion", (req, res) => {
 	if (!req.session.questionIndex) {
