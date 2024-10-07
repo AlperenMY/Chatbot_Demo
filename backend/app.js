@@ -64,15 +64,17 @@ app.get("/whichQuestion", (req, res) => {
 		req.session.questionIndex = 0;
 	}
 	console.log("Question Index:", req.session);
-	return res
-		.status(200)
-		.send({ success: true, message: req.session.questionIndex });
+	return res.status(200).send({
+		success: true,
+		questionIndex: req.session.questionIndex,
+		name: req.session.questionIndex > 0 ? req.session.name : undefined,
+	});
 });
 
 app.post("/register", (req, res) => {
 	const name = req.body.name;
 	req.session.name = name;
-	return res.status(200).send({ success: true, message: "ok" });
+	return res.status(200).send({ success: true, name: req.session.name });
 });
 
 app.post("/answer", async (req, res) => {
@@ -87,7 +89,9 @@ app.post("/answer", async (req, res) => {
 			{ upsert: true }
 		);
 		req.session.questionIndex += 1;
-		return res.status(200).send({ success: true, message: "ok" });
+		return res
+			.status(200)
+			.send({ success: true, questionIndex: req.session.questionIndex });
 	} catch (error) {
 		console.log(error);
 		return res.status(500).send({ success: true, message: error.message });
