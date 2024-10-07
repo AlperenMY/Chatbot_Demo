@@ -9,20 +9,20 @@ import questions from "./questions";
 
 const ChatApp = () => {
 	//States
-	const [input, setInput] = useState("");
-	const [isTyped, setIsTyped] = useState(false);
+	const [input, setInput] = useState(""); //textField input state
+	const [isTyped, setIsTyped] = useState(false); //to check if chatbot typing animation is finished
 	const [questionIndex, setQuestionIndex] = useState(0);
-	const [messageQueue, setMessageQueue] = useState([]);
-	const [name, setName] = useState("");
+	const [messageQueue, setMessageQueue] = useState([]); //messages queue that is rendered
+	const [name, setName] = useState(""); //User's name that is stored in session
 
 	const apiUrl = "http://localhost:3000";
 
 	const messagesEndRef = useRef(null);
 
 	const scrollToBottom = () => {
-		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); // Scroll işlemi
+		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); // for Scroll purposes
 	};
-
+	//Only on first render - get the questionIndex that user left and start message queue accordingly
 	useEffect(() => {
 		axios
 			.get(`${apiUrl}/whichQuestion`, { withCredentials: true })
@@ -46,15 +46,16 @@ const ChatApp = () => {
 				}
 			});
 	}, []);
-
+	//To add chatbots messages to message queue
 	useEffect(() => {
 		if (
 			isTyped &&
-			name &&
+			name && //if name is not defined chatbot should wait for it
 			questionIndex < questions.length &&
-			(messageQueue.length < 2 ||
-				messageQueue[messageQueue.length - 1].fromBot === false)
+			(messageQueue.length < 2 || //if user revisit the page after "Welcome back" chatbot will write again
+				messageQueue[messageQueue.length - 1].fromBot === false) // OR Last message is from user
 		) {
+			//then chatbot next message is added to the queue
 			setIsTyped(false);
 			setMessageQueue([
 				...messageQueue,
@@ -64,12 +65,13 @@ const ChatApp = () => {
 	}, [isTyped, name, questionIndex]);
 
 	useEffect(() => {
-		scrollToBottom(); // Her mesaj güncellendiğinde sayfa en alta kaydırılacak
+		scrollToBottom(); // On every message queue update scroll to bottom of the page
 	}, [messageQueue]);
 
 	const handleSubmit = async () => {
 		if (input.trim() !== "") {
 			if (name) {
+				//if name is defined save user input as answer
 				const response = await axios.post(
 					`${apiUrl}/answer`,
 					{
@@ -80,6 +82,7 @@ const ChatApp = () => {
 				);
 				setQuestionIndex(response.data.questionIndex);
 			} else {
+				// else user's input must be it's name so register it's name
 				axios
 					.post(`${apiUrl}/register`, { name: input }, { withCredentials: true })
 					.then((response) => {

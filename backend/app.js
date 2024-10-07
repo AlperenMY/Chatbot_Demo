@@ -58,6 +58,18 @@ app.use(
 	})
 );
 
+/**
+ * Handles the retrieval of the current question index and user name.
+ * If the question index is not set in the session, it initializes it to 0.
+ *
+ * @param {Object} req - The request object containing session data.
+ * @param {Object} res - The response object to send back to the client.
+ *
+ * @returns {Object} - The response object with status 200 and a JSON object containing:
+ * - success: A boolean indicating the success of the operation.
+ * - questionIndex: The current question index that is stored in req.session.
+ * - name: The user name stored in req.session if the question index is greater than 0 to greet user.
+ */
 app.get("/whichQuestion", (req, res) => {
 	if (!req.session.questionIndex) {
 		req.session.questionIndex = 0;
@@ -69,12 +81,31 @@ app.get("/whichQuestion", (req, res) => {
 	});
 });
 
+/**
+ * Handles the registration process by storing the user's name in the session.
+ *
+ * @param {Object} req - The request object containing the user's name in the request body.
+ * @param {Object} res - The response object to send back to the client.
+ *
+ * @returns {Object} - The response object with status 200 and a JSON object containing:
+ * - success: A boolean indicating the success of the operation.
+ * - name: The user's name.
+ */
 app.post("/register", (req, res) => {
 	const name = req.body.name;
 	req.session.name = name;
 	return res.status(200).send({ success: true, name: req.session.name });
 });
-
+/**
+ * Handles the saving process user's answers to db.
+ *
+ * @param {Object} req - The request object containing the user's answer and the question.
+ * @param {Object} res - The response object to send back to the client.
+ *
+ * @returns {Object} - The response object with status 200 and a JSON object containing:
+ * - success: A boolean indicating the success of the operation.
+ * - questionIndex: incremented question index.
+ */
 app.post("/answer", async (req, res) => {
 	try {
 		await AnswerList.findOneAndUpdate(

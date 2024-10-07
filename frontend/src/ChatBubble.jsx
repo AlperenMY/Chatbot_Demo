@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Paper, Typography, Box } from "@mui/material";
-
+//message: Text to write to bubble
+//fromBot: to decide bubble position and color
+//setIsTyped: function to call when typing animation completes
 const ChatBubble = ({ message, fromBot, setIsTyped }) => {
 	const [displayedMessage, setDisplayedMessage] = useState(message[0]);
 
@@ -8,6 +10,7 @@ const ChatBubble = ({ message, fromBot, setIsTyped }) => {
 
 	useEffect(() => {
 		if (fromBot) {
+			//if this a bot bubble than a typing animation will be triggered
 			let currIndex = 0;
 			const intervalId = setInterval(() => {
 				if (currIndex >= message.length - 1) {
