@@ -23,7 +23,7 @@ const sessionConfig = {
 	}),
 	secret: process.env.SESSION_SECRET,
 	resave: false,
-	saveUninitialized: true,
+	saveUninitialized: false,
 	cookie: {
 		maxAge: 1000 * 60 * 60 * 24 * 7,
 		httpOnly: false,
@@ -63,7 +63,7 @@ app.get("/whichQuestion", (req, res) => {
 	if (!req.session.questionIndex) {
 		req.session.questionIndex = 0;
 	}
-	console.log("Question Index:", req.session);
+	console.log("Question Index:", req.session, req.session.id);
 	return res.status(200).send({
 		success: true,
 		questionIndex: req.session.questionIndex,
@@ -74,6 +74,7 @@ app.get("/whichQuestion", (req, res) => {
 app.post("/register", (req, res) => {
 	const name = req.body.name;
 	req.session.name = name;
+	console.log("register", req.session, req.session.id);
 	return res.status(200).send({ success: true, name: req.session.name });
 });
 
@@ -89,6 +90,7 @@ app.post("/answer", async (req, res) => {
 			{ upsert: true }
 		);
 		req.session.questionIndex += 1;
+		console.log("answer", req.session, req.session.id);
 		return res
 			.status(200)
 			.send({ success: true, questionIndex: req.session.questionIndex });
