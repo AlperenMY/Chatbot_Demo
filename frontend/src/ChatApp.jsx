@@ -1,19 +1,28 @@
 import { useState, useEffect, useRef } from "react";
 import { TextField, IconButton, Box, Container } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
+import axios from "axios";
 
 import ChatBubble from "./ChatBubble";
 
 import questions from "./questions";
+
+//1.kaçıncı soruda olduğunu öğrenmek
+//2.Eğer sıfır ise greeting mesajı ve ismini öğrenmek
+//3.Register endpointine gidip ismin sessiona kaydedilmesi sağlanor
+//4.İlk soru sorularak başlanır
+//5.Eğer sıfır değil ise ismi ile karşılama yapılacak ve hangi soruda kaldı ise o soru sorulacak
+//6.cevap geldikten sonra backend'e gönderilecek
 
 const ChatApp = () => {
 	//States
 	const [input, setInput] = useState("");
 	const [isTyped, setIsTyped] = useState(false);
 	const [questionIndex, setQuestionIndex] = useState(0);
-	const [messageQueue, setMessageQueue] = useState([
-		{ text: "Welcome to my chatbot!", fromBot: true },
-	]);
+	const [messageQueue, setMessageQueue] = useState([]);
+	const [name, setName] = useState("");
+
+	const apiUrl = "http://localhost:3000";
 
 	const messagesEndRef = useRef(null);
 
@@ -22,12 +31,33 @@ const ChatApp = () => {
 	};
 
 	useEffect(() => {
-		scrollToBottom(); // Her mesaj güncellendiğinde sayfa en alta kaydırılacak
-	}, [messageQueue]);
+		axios
+			.get(`${apiUrl}/whichQuestion`, { withCredentials: true })
+			.then((response) => {
+				if (response.data.questionIndex === 0) {
+					setMessageQueue([
+						...messageQueue,
+						{
+							text:
+								"Welcome to my Chatbot Demo! Could you please tell me your name for further reference",
+							fromBot: true,
+						},
+					]);
+				} else {
+					setMessageQueue([
+						...messageQueue,
+						{ text: `Hey ${response.data.name}, welcome back!`, fromBot: true },
+					]);
+					setQuestionIndex(response.data.questionIndex);
+					setName(response.data.name);
+				}
+			});
+	}, []);
 
 	useEffect(() => {
 		if (
 			isTyped &&
+			name &&
 			questionIndex < questions.length &&
 			(messageQueue.length < 2 ||
 				messageQueue[messageQueue.length - 1].fromBot === false)
@@ -37,12 +67,32 @@ const ChatApp = () => {
 				...messageQueue,
 				{ text: questions[questionIndex], fromBot: true },
 			]);
-			setQuestionIndex((index) => index + 1);
 		}
-	}, [isTyped]);
+	}, [isTyped, name, questionIndex]);
 
-	const handleSubmit = () => {
+	useEffect(() => {
+		scrollToBottom(); // Her mesaj güncellendiğinde sayfa en alta kaydırılacak
+	}, [messageQueue]);
+
+	const handleSubmit = async () => {
 		if (input.trim() !== "") {
+			if (name) {
+				const response = await axios.post(
+					`${apiUrl}/answer`,
+					{
+						question: questions[questionIndex],
+						answer: input,
+					},
+					{ withCredentials: true }
+				);
+				setQuestionIndex(response.data.questionIndex);
+			} else {
+				axios
+					.post(`${apiUrl}/register`, { name: input }, { withCredentials: true })
+					.then((response) => {
+						setName(response.data.name);
+					});
+			}
 			setIsTyped(false);
 			setMessageQueue([...messageQueue, { text: input, fromBot: false }]);
 			setInput("");
