@@ -3,7 +3,6 @@ const express = require("express");
 const mongoose = require("mongoose");
 const session = require("express-session");
 const mongoSanitize = require("express-mongo-sanitize");
-const helmet = require("helmet");
 const MongoStore = require("connect-mongo");
 const cors = require("cors");
 

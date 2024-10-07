@@ -128,7 +128,7 @@ const ChatApp = () => {
 					fullWidth
 					autoFocus
 					variant="outlined"
-					placeholder="Cevabınızı buraya yazınız!"
+					placeholder="Write your answer here!"
 					value={input}
 					onChange={(event) => setInput(event.target.value)}
 					onKeyDown={handleKeyDown}
