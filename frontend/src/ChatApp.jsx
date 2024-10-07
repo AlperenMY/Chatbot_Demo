@@ -7,13 +7,6 @@ import ChatBubble from "./ChatBubble";
 
 import questions from "./questions";
 
-//1.kaçıncı soruda olduğunu öğrenmek
-//2.Eğer sıfır ise greeting mesajı ve ismini öğrenmek
-//3.Register endpointine gidip ismin sessiona kaydedilmesi sağlanor
-//4.İlk soru sorularak başlanır
-//5.Eğer sıfır değil ise ismi ile karşılama yapılacak ve hangi soruda kaldı ise o soru sorulacak
-//6.cevap geldikten sonra backend'e gönderilecek
-
 const ChatApp = () => {
 	//States
 	const [input, setInput] = useState("");
