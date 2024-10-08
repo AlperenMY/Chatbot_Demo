@@ -73,6 +73,7 @@ app.use(
 app.get("/whichQuestion", (req, res) => {
 	if (!req.session.questionIndex) {
 		req.session.questionIndex = 0;
+		req.session.startTime = new Date();
 	}
 	return res.status(200).send({
 		success: true,
@@ -94,6 +95,7 @@ app.get("/whichQuestion", (req, res) => {
 app.post("/register", (req, res) => {
 	const name = req.body.name;
 	req.session.name = name;
+	console.log("Register", req.session);
 	return res.status(200).send({ success: true, name: req.session.name });
 });
 /**
@@ -118,6 +120,10 @@ app.post("/answer", async (req, res) => {
 			{ upsert: true }
 		);
 		req.session.questionIndex += 1;
+		if (req.session.questionIndex === 10) {
+			req.session.endTime = new Date();
+		}
+		console.log("Answer", req.session);
 		return res
 			.status(200)
 			.send({ success: true, questionIndex: req.session.questionIndex });
