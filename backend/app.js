@@ -5,6 +5,7 @@ const session = require("express-session");
 const mongoSanitize = require("express-mongo-sanitize");
 const MongoStore = require("connect-mongo");
 const cors = require("cors");
+const axios = require("axios");
 
 const AnswerList = require("./schema/answerList");
 
@@ -82,6 +83,23 @@ app.get("/whichQuestion", (req, res) => {
 	});
 });
 
+app.get("/answerList", async (req, res) => {
+	try {
+		const userAnswerList = await AnswerList.findOne({
+			sessionId: req.session.id,
+		});
+		return res.status(200).send({
+			success: true,
+			answerList: userAnswerList?.answerList ? userAnswerList.answerList : [],
+		});
+	} catch (error) {
+		console.error("Error fetching answerList:", error);
+		return res
+			.status(500)
+			.send({ success: false, message: "Internal Server Error" });
+	}
+});
+
 /**
  * Handles the registration process by storing the user's name in the session.
  *
@@ -110,6 +128,7 @@ app.post("/register", (req, res) => {
  */
 app.post("/answer", async (req, res) => {
 	try {
+		console.log(req.session);
 		await AnswerList.findOneAndUpdate(
 			{ sessionId: req.session.id },
 			{
@@ -120,16 +139,89 @@ app.post("/answer", async (req, res) => {
 			{ upsert: true }
 		);
 		req.session.questionIndex += 1;
-		if (req.session.questionIndex === 10) {
-			req.session.endTime = new Date();
-		}
-		console.log("Answer", req.session);
+		// if (req.session.questionIndex === 10) {
+		// 	req.session.endTime = new Date();
+		// }
 		return res
 			.status(200)
 			.send({ success: true, questionIndex: req.session.questionIndex });
 	} catch (error) {
 		console.log(error);
 		return res.status(500).send({ success: true, message: error.message });
+	}
+});
+
+app.post("/askQuestion", async (req, res) => {
+	try {
+		console.log("questionIndex", req.session.questionIndex);
+		const openAiAPILink = "https://api.openai.com/v1/chat/completions";
+		const model = "gpt-4o";
+		const response_format = { type: "text" };
+		const headers = {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+		};
+		let response;
+		if (!req.session.questionIndex) {
+			response = await axios.post(
+				openAiAPILink,
+				{
+					model,
+					response_format,
+					messages: [
+						{
+							role: "system",
+							content:
+								"Write a good welcome text for the chatbot made by Alperen, and ask user's name",
+						},
+					],
+				},
+				{ headers }
+			);
+			req.session.questionIndex = 0;
+			req.session.startTime = new Date();
+		} else if (req.session.questionIndex === 1) {
+			response = await axios.post(
+				openAiAPILink,
+				{
+					model,
+					response_format,
+					messages: [
+						...req.body.messageQueue,
+						{
+							role: "system",
+							content:
+								"Ask a one question about cats like 'What is your favorite breed of cat, and why?'.",
+						},
+					],
+				},
+				{ headers }
+			);
+		} else {
+			response = await axios.post(
+				openAiAPILink,
+				{
+					model,
+					response_format,
+					messages: [
+						...req.body.messageQueue,
+						{
+							role: "system",
+							content: "Ask another question about cats based on user's answer.",
+						},
+					],
+				},
+				{ headers }
+			);
+		}
+		return res
+			.status(200)
+			.send({ success: true, message: response.data.choices[0].message });
+	} catch (error) {
+		console.log(error);
+		return res
+			.status(error.status || 500)
+			.send({ success: true, message: error.response.data });
 	}
 });
 

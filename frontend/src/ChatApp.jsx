@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { TextField, IconButton, Box, Container } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import axios from "axios";
@@ -11,9 +11,8 @@ const ChatApp = () => {
 	//States
 	const [input, setInput] = useState(""); //textField input state
 	const [isTyped, setIsTyped] = useState(false); //to check if chatbot typing animation is finished
-	const [questionIndex, setQuestionIndex] = useState(0);
 	const [messageQueue, setMessageQueue] = useState([]); //messages queue that is rendered
-	const [name, setName] = useState(""); //User's name that is stored in session
+	const [answerList, setAnswerList] = useState([]); //previous conversation get from DB
 
 	const apiUrl = "http://localhost:3000";
 
@@ -22,47 +21,69 @@ const ChatApp = () => {
 	const scrollToBottom = () => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); // for Scroll purposes
 	};
-	//Only on first render - get the questionIndex that user left and start message queue accordingly
-	useEffect(() => {
-		axios
-			.get(`${apiUrl}/whichQuestion`, { withCredentials: true })
-			.then((response) => {
-				if (response.data.questionIndex === 0) {
-					setMessageQueue([
-						...messageQueue,
-						{
-							text:
-								"Welcome to my Chatbot Demo! Could you please tell me your name for further reference",
-							fromBot: true,
-						},
-					]);
-				} else {
-					setMessageQueue([
-						...messageQueue,
-						{ text: `Hey ${response.data.name}, welcome back!`, fromBot: true },
-					]);
-					setQuestionIndex(response.data.questionIndex);
-					setName(response.data.name);
-				}
+
+	//async functions
+	const getAnswerList = useCallback(async () => {
+		try {
+			const response = await axios.get(`${apiUrl}/answerList`, {
+				withCredentials: true,
 			});
+			console.log("answerList", response.data);
+			setAnswerList(response.data.answerList);
+		} catch (error) {
+			console.error("Error fetching answerList:", error);
+			return null;
+		}
 	}, []);
-	//To add chatbots messages to message queue
-	useEffect(() => {
-		if (
-			isTyped &&
-			name && //if name is not defined chatbot should wait for it
-			questionIndex < questions.length &&
-			(messageQueue.length < 2 || //if user revisit the page after "Welcome back" chatbot will write again
-				messageQueue[messageQueue.length - 1].fromBot === false) // OR Last message is from user
-		) {
-			//then chatbot next message is added to the queue
-			setIsTyped(false);
+
+	const askQuestion = useCallback(async (messageQueue) => {
+		try {
+			const response = await axios.post(
+				`${apiUrl}/askQuestion`,
+				{ messageQueue },
+				{ withCredentials: true }
+			);
 			setMessageQueue([
 				...messageQueue,
-				{ text: questions[questionIndex], fromBot: true },
+				{ role: "assistant", content: response.data.message.content, new: true },
 			]);
+		} catch (error) {
+			console.error("Error asking question:", error);
+			return null;
 		}
-	}, [isTyped, name, questionIndex]);
+	}, []);
+
+	//Only on first render - get the answerList of the session from DB
+	useEffect(() => {
+		getAnswerList();
+	}, []);
+
+	//Check answerList to start conversation
+	useEffect(() => {
+		if (answerList && answerList.length > 0) {
+			const savedChat = [];
+			answerList.forEach((item) => {
+				savedChat.push(
+					...[
+						{ role: "assistant", content: item.question, new: false },
+						{ role: "user", content: item.answer },
+					]
+				);
+			});
+			setMessageQueue(savedChat);
+		} else {
+			askQuestion([]);
+		}
+	}, [answerList]);
+
+	//To add chatbots messages to message queue
+	useEffect(() => {
+		if (isTyped && messageQueue[messageQueue.length - 1].role === "user") {
+			//then chatbot next message is added to the queue
+			setIsTyped(false);
+			askQuestion(messageQueue);
+		}
+	}, [isTyped]);
 
 	useEffect(() => {
 		scrollToBottom(); // On every message queue update scroll to bottom of the page
@@ -70,27 +91,21 @@ const ChatApp = () => {
 
 	const handleSubmit = async () => {
 		if (input.trim() !== "") {
-			if (name) {
-				//if name is defined save user input as answer
-				const response = await axios.post(
+			try {
+				await axios.post(
 					`${apiUrl}/answer`,
 					{
-						question: questions[questionIndex],
+						question: messageQueue[messageQueue.length - 1].content,
 						answer: input,
 					},
 					{ withCredentials: true }
 				);
-				setQuestionIndex(response.data.questionIndex);
-			} else {
-				// else user's input must be it's name so register it's name
-				axios
-					.post(`${apiUrl}/register`, { name: input }, { withCredentials: true })
-					.then((response) => {
-						setName(response.data.name);
-					});
+			} catch (error) {
+				console.error("Error answering question:", error);
+				return null;
 			}
 			setIsTyped(false);
-			setMessageQueue([...messageQueue, { text: input, fromBot: false }]);
+			setMessageQueue([...messageQueue, { role: "user", content: input }]);
 			setInput("");
 		}
 	};
@@ -107,8 +122,9 @@ const ChatApp = () => {
 				{messageQueue.map((message, index) => (
 					<ChatBubble
 						key={index}
-						message={message.text}
-						fromBot={message.fromBot}
+						message={message.content}
+						role={message.role}
+						isNew={message.new}
 						setIsTyped={setIsTyped}
 					/>
 				))}
